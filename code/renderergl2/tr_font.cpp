@@ -73,31 +73,24 @@ void R_SetFontZ(float zed)
 }
 
 static int CodeSearch(const fontheader_t* font, unsigned short uch) {
-    int mid;
-    int l, r;
+    int l = 0;
+    int r = font->charTableLength - 1;
 
-    r = font->charTableLength;
-    l = 0;
-    while (l < r) {
-        mid = (l + r) / 2;
-        
-        if (font->charTable[mid].cp > uch) {
-            r = (l + r) / 2;
-            continue;
+    while (l <= r) {
+        int mid = l + (r - l) / 2;
+
+        if (font->charTable[mid].cp == uch) {
+            return mid;
         }
 
-        if (uch == font->charTable[mid].cp) {
-            return (l + r) / 2;
+        if (font->charTable[mid].cp < uch) {
+            l = mid + 1;
+        } else {
+            r = mid - 1;
         }
-
-        l = mid + 1;
     }
 
-    if (uch != font->charTable[l].cp) {
-        return -1;
-    }
-
-    return l;
+    return -1;
 }
 
 static qboolean DBCSIsLeadByte(const fontheader_t* font, unsigned short uch) {
@@ -305,6 +298,15 @@ fontheader_t* R_LoadFont(const char* name) {
     const char* token;
     qboolean error;
     char* pRitFontNames[32];
+
+    if (!Q_stricmp(name, "verdana-14")) {
+        // If verdana-12 has multi-page RitFontList (Chinese localization),
+        // fallback verdana-14 to verdana-12 since Chinese patch only provides verdana-12 and facfont-20.
+        fontheader_t* v12 = R_LoadFont("verdana-12");
+        if (v12 && v12->numPages > 0) {
+            return v12;
+        }
+    }
 
     error = qfalse;
 
@@ -704,7 +706,7 @@ void R_DrawString(fontheader_t* font, const char* text, float x, float y, int ma
     size_t buflen;
     int cursgl;
     float curX, curY;
-    float curHeight;
+    float curWidth;
     
     if (!font->numPages) {
         if (font->sgl[0]) {
@@ -719,19 +721,19 @@ void R_DrawString(fontheader_t* font, const char* text, float x, float y, int ma
     
     curX = x;
     curY = y;
-    curHeight = 0.f;
+    curWidth = 0.f;
     cursgl = -1;
     buflen = 0;
 
     i = 0;
-    while(i < maxlen) {
+    while(i < maxlen && text[i]) {
         fontchartable_t* ct;
 
-        uch = text[i];
+        uch = (unsigned char)text[i];
         i++;
 
-        if (DBCSIsLeadByte(font, uch)) {
-            uch = (uch << 8) | text[i];
+        if (DBCSIsLeadByte(font, uch) && i < maxlen && text[i]) {
+            uch = (uch << 8) | (unsigned char)text[i];
             i++;
         }
 
@@ -740,11 +742,13 @@ void R_DrawString(fontheader_t* font, const char* text, float x, float y, int ma
         }
 
         if (uch == '\n' || uch == '\r') {
-            buffer[buflen] = 0;
-            R_DrawString_sgl(font->sgl[cursgl], buffer, curX, curY, maxlen, pvVirtualScreen);
+            if (buflen > 0 && cursgl >= 0 && font->sgl[cursgl]) {
+                buffer[buflen] = 0;
+                R_DrawString_sgl(font->sgl[cursgl], buffer, curX, curY, buflen, pvVirtualScreen);
+            }
             
             curX = x;
-            curHeight = 0.f;
+            curWidth = 0.f;
             buflen = 0;
             if (uch == '\n') {
                 curY += font->sgl[0]->height * s_fontGeneralScale * s_fontHeightScale;
@@ -758,30 +762,32 @@ void R_DrawString(fontheader_t* font, const char* text, float x, float y, int ma
             continue;
         }
 
-        if (cursgl == -1) {
-            cursgl = font->charTable[code].index;
-        }
-
         ct = &font->charTable[code];
-        if (cursgl != ct->index || buflen >= ARRAY_LEN(buffer) - 2) {
-            buffer[buflen] = 0;
-            R_DrawString_sgl(font->sgl[cursgl], buffer, curX, curY, maxlen, pvVirtualScreen);
 
-            curX += curHeight;
-            curHeight = 0.f;
-            buflen = 0;
-            ct = &font->charTable[code];
+        if (cursgl == -1) {
             cursgl = ct->index;
         }
 
-        buffer[buflen++] = ct->loc;
-        curHeight += font->sgl[cursgl]->locations[ct->loc].size[0] * 256.0f;
+        if (cursgl != ct->index || buflen >= sizeof(buffer) - 2) {
+            if (buflen > 0 && cursgl >= 0 && font->sgl[cursgl]) {
+                buffer[buflen] = 0;
+                R_DrawString_sgl(font->sgl[cursgl], buffer, curX, curY, buflen, pvVirtualScreen);
+            }
+
+            curX += curWidth * s_fontGeneralScale;
+            curWidth = 0.f;
+            buflen = 0;
+            cursgl = ct->index;
+        }
+
+        buffer[buflen++] = (char)ct->loc;
+        curWidth += font->sgl[cursgl]->locations[ct->loc].size[0] * 256.0f;
     }
 
-    if (buflen)
+    if (buflen > 0 && cursgl >= 0 && font->sgl[cursgl])
     {
         buffer[buflen] = 0;
-        R_DrawString_sgl(font->sgl[cursgl], buffer, curX, y, buflen, pvVirtualScreen);
+        R_DrawString_sgl(font->sgl[cursgl], buffer, curX, curY, buflen, pvVirtualScreen);
     }
 }
 
@@ -915,7 +921,7 @@ float R_GetFontStringWidth_sgl(const fontheader_sgl_t* font, const char* s)
     for (i = 0; s[i]; i++)
     {
         int indirected;
-        char c = *s;
+        unsigned char c = (unsigned char)s[i];
 
         if (c == '\t')
         {
@@ -947,19 +953,24 @@ float R_GetFontStringWidth(const fontheader_t* font, const char* s)
     fontchartable_t* ct;
     float width = 0.f;
 
+    if (!font) {
+        return 0.f;
+    }
+
     if (!font->numPages) {
         return R_GetFontStringWidth_sgl(font->sgl[0], s);
     }
 
     i = 0;
     while(s[i]) {
-        unsigned char uch = s[i++];
+        unsigned short uch = (unsigned char)s[i++];
 
-        if (DBCSIsLeadByte(font, uch)) {
-            uch = (uch << 8) | s[i++];
-            if (!uch) {
-                break;
-            }
+        if (DBCSIsLeadByte(font, uch) && s[i]) {
+            uch = (uch << 8) | (unsigned char)s[i++];
+        }
+
+        if (!uch) {
+            break;
         }
 
         if (uch == '\t') {
@@ -978,5 +989,5 @@ float R_GetFontStringWidth(const fontheader_t* font, const char* s)
         }
     }
 
-    return width;
+    return width * s_fontGeneralScale * 256.0f;
 }

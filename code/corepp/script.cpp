@@ -260,7 +260,7 @@ void Script::SkipWhiteSpace(qboolean crossline)
     //
     CheckOverflow();
 
-    while (*script_p <= TOKENSPACE || *script_p == TOKENCOMMA) {
+    while (((unsigned char)*script_p <= (unsigned char)TOKENSPACE || *script_p == TOKENCOMMA) && *script_p != '\0') {
         if (*script_p++ == TOKENEOL) {
             if (!crossline) {
                 FILE_Error(ERR_DROP, "Line %i is incomplete in file %s\n", line, filename.c_str());
@@ -343,7 +343,7 @@ qboolean Script::TokenAvailable(qboolean crossline)
     }
 
     while (1) {
-        while (*script_p <= TOKENSPACE) {
+        while ((unsigned char)*script_p <= (unsigned char)TOKENSPACE && *script_p != '\0') {
             if (*script_p == TOKENEOL) {
                 if (!crossline) {
                     return (false);
@@ -390,7 +390,7 @@ qboolean Script::CommentAvailable(qboolean crossline)
         return false;
     }
 
-    while (*searchptr <= TOKENSPACE) {
+    while ((unsigned char)*searchptr <= (unsigned char)TOKENSPACE && *searchptr != '\0') {
         if ((*searchptr == TOKENEOL) && (!crossline)) {
             return false;
         }
@@ -560,7 +560,7 @@ const char *Script::GrabNextToken(qboolean crossline)
     }
 
     token_p = token;
-    while ((*script_p > TOKENSPACE) && (*script_p != TOKENCOMMA) && !AtComment()) {
+    while (((unsigned char)*script_p > (unsigned char)TOKENSPACE) && (*script_p != TOKENCOMMA) && !AtComment()) {
         if ((*script_p == '\\') && (script_p < (end_p - 1))) {
             script_p++;
             switch (*script_p) {

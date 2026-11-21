@@ -185,7 +185,7 @@ void TikiScript::SkipWhiteSpace(qboolean crossline)
     // skip space
     //
     while (!SafeCheckOverflow()) {
-        if (*script_p <= TOKENSPACE) {
+        if ((unsigned char)*script_p <= (unsigned char)TOKENSPACE && *script_p != '\0') {
             if (*script_p == TOKENEOL) {
                 if (!crossline) {
                     TIKI_DPrintf("Line %i is incomplete in file %s\n", line, Filename());
@@ -509,7 +509,7 @@ qboolean TikiScript::TokenAvailable(qboolean crossline)
     }
 
     while (!SafeCheckOverflow()) {
-        if (*script_p <= TOKENSPACE) {
+        if ((unsigned char)*script_p <= (unsigned char)TOKENSPACE && *script_p != '\0') {
             if (*script_p == TOKENEOL) {
                 if (!crossline) {
                     return false;
@@ -553,7 +553,7 @@ qboolean TikiScript::CommentAvailable(qboolean crossline)
         return false;
     }
 
-    while (*searchptr <= TOKENSPACE) {
+    while ((unsigned char)*searchptr <= (unsigned char)TOKENSPACE && *searchptr != '\0') {
         if ((*searchptr == TOKENEOL) && (!crossline)) {
             return false;
         }
@@ -670,7 +670,7 @@ const char *TikiScript::GetToken(qboolean crossline)
     macro_start = NULL;
     macro_end   = NULL;
     token_p     = i->token;
-    while ((*i->script_p > TOKENSPACE) && !i->AtComment()) {
+    while (((unsigned char)*i->script_p > (unsigned char)TOKENSPACE) && !i->AtComment()) {
         if ((*i->script_p == '\\') && (i->script_p < (end_p - 1))) {
             i->script_p++;
             switch (*i->script_p) {

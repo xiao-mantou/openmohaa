@@ -140,7 +140,7 @@ bool UIFont::DBCSIsMaekin(unsigned short uch)
     }
 
     for (p = tokinList; *p; p += 2) {
-        if (p[0] == ch && p[1] == uch) {
+        if (p[0] == ch && p[1] == (uch & 0xFF)) {
             return true;
         }
     }
@@ -182,7 +182,7 @@ bool UIFont::DBCSIsAtokin(unsigned short uch)
     }
 
     for (p = tokinList; *p; p += 2) {
-        if (p[0] == ch && p[1] == uch) {
+        if (p[0] == ch && p[1] == (uch & 0xFF)) {
             return true;
         }
     }
@@ -653,31 +653,24 @@ qboolean UI_FontDBCSIsLeadByte(fontheader_t *font, unsigned short uch)
 
 int UI_FontCodeSearch(const fontheader_t *font, unsigned short uch)
 {
-    int mid;
-    int l, r;
+    int l = 0;
+    int r = font->charTableLength - 1;
 
-    r = font->charTableLength;
-    l = 0;
-    while (l < r) {
-        mid = (l + r) / 2;
+    while (l <= r) {
+        int mid = l + (r - l) / 2;
 
-        if (font->charTable[mid].cp > uch) {
-            r = (l + r) / 2;
-            continue;
+        if (font->charTable[mid].cp == uch) {
+            return mid;
         }
 
-        if (uch == font->charTable[mid].cp) {
-            return (l + r) / 2;
+        if (font->charTable[mid].cp < uch) {
+            l = mid + 1;
+        } else {
+            r = mid - 1;
         }
-
-        l = mid + 1;
     }
 
-    if (uch != font->charTable[l].cp) {
-        return -1;
-    }
-
-    return l;
+    return -1;
 }
 
 float UI_FontgetCharWidthf(fontheader_t *font, unsigned short uch)
@@ -728,13 +721,9 @@ int UI_FontStringMaxWidth(fontheader_t *pFont, const char *pszString, int iMaxLe
     for (int i = 0; pszString[i] && (iMaxLen == -1 || i < iMaxLen); i++) {
         unsigned short uch = (unsigned char)pszString[i];
 
-        if (UI_FontDBCSIsLeadByte(pFont, uch)) {
-            uch = (uch << 8) | pszString[i];
-            if (!pszString[i]) {
-                break;
-            }
-
+        if (UI_FontDBCSIsLeadByte(pFont, uch) && pszString[i + 1] && (iMaxLen == -1 || (i + 1) < iMaxLen)) {
             i++;
+            uch = (uch << 8) | (unsigned char)pszString[i];
         }
 
         if (uch == '\n') {
@@ -763,13 +752,9 @@ int UI_FontStringWidth(fontheader_t *pFont, const char *pszString, int iMaxLen)
     for (int i = 0; pszString[i] && (iMaxLen == -1 || i < iMaxLen); i++) {
         unsigned short uch = (unsigned char)pszString[i];
 
-        if (UI_FontDBCSIsLeadByte(pFont, uch)) {
-            uch = (uch << 8) | pszString[i];
-            if (!pszString[i]) {
-                break;
-            }
-
+        if (UI_FontDBCSIsLeadByte(pFont, uch) && pszString[i + 1] && (iMaxLen == -1 || (i + 1) < iMaxLen)) {
             i++;
+            uch = (uch << 8) | (unsigned char)pszString[i];
         }
 
         if (uch == '\n') {

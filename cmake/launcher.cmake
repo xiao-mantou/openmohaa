@@ -3,8 +3,12 @@ set(LAUNCHER_SOURCES "${SOURCE_DIR}/Launcher/launch_main.cpp")
 if (WIN32)
     list(APPEND LAUNCHER_SOURCES
         ${SOURCE_DIR}/Launcher/launch_win32.cpp
-        ${SOURCE_DIR}/sys/win_resource.rc
     )
+    if (NOT MINGW)
+        list(APPEND LAUNCHER_SOURCES
+            ${SOURCE_DIR}/sys/win_resource.rc
+        )
+    endif()
 else()
     list(APPEND LAUNCHER_SOURCES
         ${SOURCE_DIR}/Launcher/launch_linux.cpp
