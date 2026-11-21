@@ -46,12 +46,7 @@ void Sys_ShutLocalization()
 
 const char *Sys_LV_ConvertString(const char *var)
 {
-    //
-    // Changed in 2.0
-    //  Don't localize messages from fgame.
-    //  The client already localize messages it receives
-    //
-    return var;
+    return Sys_LV_CL_ConvertString(var);
 }
 
 const char *Sys_LV_CL_ConvertString(const char *var)
@@ -224,8 +219,6 @@ void cLocalization::LoadFile(const char *name)
 
 static int bjb_strnscmp(const char *a, const char *b, size_t n)
 {
-    int i;
-
     while (n > 0 && *a && *b) {
         if (*a == *b) {
             a++;
@@ -235,25 +228,25 @@ static int bjb_strnscmp(const char *a, const char *b, size_t n)
         }
 
         if (!isspace((unsigned char)*a) || !isspace((unsigned char)*b)) {
-            return *a - *b;
+            return (unsigned char)*a - (unsigned char)*b;
         }
 
-        while (n > 0 && *a && isspace(*a)) {
+        while (n > 0 && *a && isspace((unsigned char)*a)) {
             a++;
             n--;
         }
 
-        while (*b && isspace(*b)) {
+        while (*b && isspace((unsigned char)*b)) {
             b++;
         }
     }
 
-    while (n > 0 && *a && isspace(*a)) {
+    while (n > 0 && *a && isspace((unsigned char)*a)) {
         a++;
         n--;
     }
 
-    while (*b && isspace(*b)) {
+    while (*b && isspace((unsigned char)*b)) {
         b++;
     }
 
@@ -261,7 +254,7 @@ static int bjb_strnscmp(const char *a, const char *b, size_t n)
         return 0;
     }
 
-    return *a - *b;
+    return (unsigned char)*a - (unsigned char)*b;
 }
 
 static void bjb_rebreak(const char *var, char *buf, size_t max)
@@ -348,7 +341,7 @@ const char *cLocalization::ConvertString(const char *var)
     l = strlen(var);
     o = l;
 
-    while (o && var[o - 1] < ' ') {
+    while (o && (unsigned char)var[o - 1] <= ' ') {
         o--;
     }
 
@@ -357,7 +350,7 @@ const char *cLocalization::ConvertString(const char *var)
     m    = l - o;
     n    = 0;
 
-    while (o && (unsigned char)*pVar < ' ') {
+    while (o && (unsigned char)*pVar <= ' ') {
         o--;
         pVar++;
         n++;

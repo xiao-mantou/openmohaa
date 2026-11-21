@@ -757,6 +757,15 @@ void R_DrawString(fontheader_t* font, const char* text, float x, float y, int ma
             continue;
         }
 
+        if (uch == '\t') {
+            code = CodeSearch(font, ' ');
+            if (code >= 0) {
+                ct = &font->charTable[code];
+                curWidth += font->sgl[ct->index]->locations[ct->loc].size[0] * 256.0f * 3.0f;
+            }
+            continue;
+        }
+
         code = CodeSearch(font, uch);
         if (code < 0) {
             continue;

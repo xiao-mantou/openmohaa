@@ -978,6 +978,13 @@ const char *TikiScript::GetString(qboolean crossline)
             return i->token;
         }
 
+        // Handle DBCS lead byte in string so trail bytes like '\' (0x5C) aren't treated as escape characters
+        if ((unsigned char)*i->script_p >= 0x81 && (unsigned char)*i->script_p <= 0xFE && (i->script_p + 1 < i->end_p) && *(i->script_p + 1) != '"') {
+            *token_p++ = *i->script_p++;
+            *token_p++ = *i->script_p++;
+            continue;
+        }
+
         if ((*i->script_p == '\\') && (i->script_p < (end_p - 1))) {
             i->script_p++;
             switch (*i->script_p) {

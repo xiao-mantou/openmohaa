@@ -376,9 +376,9 @@ a newline.
 ==============
 */
 static char *SkipWhitespace( char *data, qboolean *hasNewLines ) {
-	unsigned int c;
+	int c;
 
-	while( (c = *data) <= ' ') {
+	while( (c = (unsigned char)*data) <= ' ') {
 		if( !c ) {
 			return NULL;
 		}
@@ -568,7 +568,7 @@ char *COM_ParseExt( char **data_p, qboolean allowLineBreaks )
 			}
 
 		}
-		c = *data;
+		c = (unsigned char)*data;
 		if( c == '\n' )
 			com_lines++;
 	} while( c>32 );
@@ -654,7 +654,7 @@ char *COM_ParseExtIgnoreQuotes( char **data_p, qboolean allowLineBreaks )
 			len++;
 		}
 		data++;
-		c = *data;
+		c = (unsigned char)*data;
 		if ( c == '\n' )
 			com_lines++;
 	} while (c>32);
@@ -690,7 +690,7 @@ const char *COM_GetToken( char **data_p, qboolean crossline )
 
 	// skip whitespace
 skipwhite:
-	while( ( c = *data ) <= ' ' )
+	while( ( c = (unsigned char)*data ) <= ' ' )
 	{
 		if( c == '\n' && !crossline )
 		{

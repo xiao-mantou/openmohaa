@@ -552,13 +552,13 @@ void str::strip(void)
         return;
     }
     s = m_data->data;
-    while (isspace((int)*s) && *s) {
+    while (*s && isspace((unsigned char)*s)) {
         s++;
     }
 
     last = s + m_data->len - (s - m_data->data);
     while (last > s) {
-        if (!isspace((int)*(last - 1))) {
+        if (!isspace((unsigned char)*(last - 1))) {
             break;
         }
         last--;
@@ -580,13 +580,13 @@ char *strstrip(char *string)
     char *s;
 
     s = string;
-    while (isspace((int)*s) && *s) {
+    while (*s && isspace((unsigned char)*s)) {
         s++;
     }
 
     last = s + strlen(s) - (s - string);
     while (last > s) {
-        if (!isspace((int)*(last - 1))) {
+        if (!isspace((unsigned char)*(last - 1))) {
             break;
         }
         last--;

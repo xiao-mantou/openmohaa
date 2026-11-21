@@ -906,6 +906,13 @@ const char *Script::GetString(qboolean crossline)
             FILE_Error(ERR_DROP, "Line %i is incomplete while reading string in file %s\n", line, filename.c_str());
         }
 
+        // Handle DBCS lead byte in string so trail bytes like '\' (0x5C) aren't treated as escape characters
+        if ((unsigned char)*script_p >= 0x81 && (unsigned char)*script_p <= 0xFE && (script_p + 1 < end_p) && *(script_p + 1) != '"') {
+            *token_p++ = *script_p++;
+            *token_p++ = *script_p++;
+            continue;
+        }
+
         if ((*script_p == '\\') && (script_p < (end_p - 1))) {
             script_p++;
             switch (*script_p) {
