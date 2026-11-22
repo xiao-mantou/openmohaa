@@ -349,6 +349,10 @@ fontheader_t* R_LoadFont(const char* name) {
         while (ref && !error)
         {
             token = COM_Parse(&ref);
+            if (!token || !token[0])
+            {
+                break;
+            }
             if (!Q_stricmp(token, "CodePage"))
             {
                 header->codePage = atoi(COM_Parse(&ref));
@@ -480,20 +484,26 @@ fontheader_t* R_LoadFont(const char* name) {
     }
     else
     {
-        for (i = 0; i < header->numPages; i++)
+        if (!error)
         {
-            header->sgl[i] = R_LoadFont_sgl(pRitFontNames[i]);
-            if (!header->sgl[i])
+            for (i = 0; i < header->numPages; i++)
             {
-                ri.Printf(PRINT_WARNING, "LoadFont: failed %s(%s)\n", pRitFontNames[i], name);
-                error = qtrue;
-                break;
+                header->sgl[i] = R_LoadFont_sgl(pRitFontNames[i]);
+                if (!header->sgl[i])
+                {
+                    ri.Printf(PRINT_WARNING, "LoadFont: failed %s(%s)\n", pRitFontNames[i], name);
+                    error = qtrue;
+                    break;
+                }
             }
         }
 
         // Free all allocated strings
         for (i = 0; i < header->numPages; i++) {
-            ri.Free(pRitFontNames[i]);
+            if (pRitFontNames[i]) {
+                ri.Free(pRitFontNames[i]);
+                pRitFontNames[i] = NULL;
+            }
         }
 
         if (error)
@@ -505,6 +515,7 @@ fontheader_t* R_LoadFont(const char* name) {
             header->numPages = 0;
             header->charTableLength = 0;
             header->charTable = NULL;
+            return NULL;
         }
     }
 
