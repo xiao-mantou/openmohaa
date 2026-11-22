@@ -653,6 +653,9 @@ qboolean UI_FontDBCSIsLeadByte(fontheader_t *font, unsigned short uch)
 
 int UI_FontCodeSearch(const fontheader_t *font, unsigned short uch)
 {
+    if (!font || !font->charTable || font->charTableLength <= 0) {
+        return -1;
+    }
     int l = 0;
     int r = font->charTableLength - 1;
 

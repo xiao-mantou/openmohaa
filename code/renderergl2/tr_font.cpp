@@ -73,6 +73,9 @@ void R_SetFontZ(float zed)
 }
 
 static int CodeSearch(const fontheader_t* font, unsigned short uch) {
+    if (!font || !font->charTable || font->charTableLength <= 0) {
+        return -1;
+    }
     int l = 0;
     int r = font->charTableLength - 1;
 
@@ -297,7 +300,7 @@ fontheader_t* R_LoadFont(const char* name) {
     char* ref;
     const char* token;
     qboolean error;
-    char* pRitFontNames[32];
+    char* pRitFontNames[32] = { 0 };
 
     if (!Q_stricmp(name, "verdana-14")) {
         // If verdana-12 has multi-page RitFontList (Chinese localization),
