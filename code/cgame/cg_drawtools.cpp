@@ -1526,6 +1526,8 @@ CG_Draw2D
 */
 void CG_Draw2D(void)
 {
+    cgi.UI_GetHighResolutionScale(cgs.uiHiResScale);
+
     CG_UpdateCountdown();
     CG_DrawZoomOverlay();
     CG_DrawLagometer();

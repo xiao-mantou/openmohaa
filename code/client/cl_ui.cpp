@@ -132,6 +132,7 @@ static float         scoreboard_h;
 static qboolean      scoreboard_header;
 cvar_t              *cl_playintro;
 cvar_t              *cl_movieaudio;
+cvar_t              *ui_scale;
 
 unsigned char        UIListCtrlItem[8];
 
@@ -1209,7 +1210,12 @@ static UIRect2D getDefaultGMBoxRectangle(void)
         height = y;
     }
 
-    return UIRect2D(20.0f, height, (getScreenWidth() - 20) * uid.scaleRes[0], 128.0f * uid.scaleRes[1]);
+    float width = (getScreenWidth() - 20) * uid.scaleRes[0];
+    if (width > uid.vidWidth - 20.0f) {
+        width = uid.vidWidth - 20.0f;
+    }
+
+    return UIRect2D(20.0f, height, width, 128.0f * uid.scaleRes[1]);
 }
 
 /*
@@ -1224,7 +1230,12 @@ static UIRect2D getDefaultDMBoxRectangle(void)
 
     width = screenWidth * uid.scaleRes[0] * ui_compass_scale->value * 0.2f;
 
-    return UIRect2D(width, 0, (screenWidth - (width + 192.0f)) * uid.scaleRes[0], 120.0f * uid.scaleRes[1]);
+    float boxWidth = (screenWidth - (width + 192.0f)) * uid.scaleRes[0];
+    if (width + boxWidth > uid.vidWidth) {
+        boxWidth = uid.vidWidth - width;
+    }
+
+    return UIRect2D(width, 0, boxWidth, 120.0f * uid.scaleRes[1]);
 }
 
 /*
@@ -1239,11 +1250,16 @@ float UI_GetObjectivesTop(void)
 
 /*
 ====================
-UI_GetObjectivesTop
+UI_GetHighResolutionScale
 ====================
 */
 void UI_GetHighResolutionScale(vec2_t scale)
 {
+    if (ui_scale && ui_scale->modified) {
+        ui_scale->modified = qfalse;
+        UI_ResolutionChange();
+    }
+
     if (uid.bHighResScaling) {
         scale[0] = uid.scaleRes[0];
         scale[1] = uid.scaleRes[1];
@@ -1822,6 +1838,11 @@ void UI_Update(void)
 {
     Menu    *currentMenu;
     UIRect2D frame;
+
+    if (ui_scale && ui_scale->modified) {
+        ui_scale->modified = qfalse;
+        UI_ResolutionChange();
+    }
 
     re.SetRenderTime(cls.realtime);
     CL_FillUIDef();
@@ -3887,18 +3908,31 @@ void UI_ResolutionChange(void)
         ui_compass_scale = Cvar_Get("ui_compass_scale", "0.55", CVAR_ARCHIVE | CVAR_LATCH);
     }
 
+    if (!ui_scale) {
+        ui_scale = Cvar_Get("ui_scale", "1.0", CVAR_ARCHIVE);
+    }
+
     CL_FillUIImports();
     CL_FillUIDef();
+
+    float userScale = ui_scale ? ui_scale->value : 1.0f;
+    if (userScale < 0.2f) {
+        userScale = 0.2f;
+    } else if (userScale > 5.0f) {
+        userScale = 5.0f;
+    }
 
     // Added in OPM
     //  Scaling for high resolutions
     if (uid.vidWidth > maxWidthRes && uid.vidHeight > maxHeightRes) {
         const float vidRatio = (float)uid.vidWidth / (float)uid.vidHeight;
 
-        uid.scaleRes[0] = (float)uid.vidWidth / (maxHeightRes * vidRatio);
-        uid.scaleRes[1] = (float)uid.vidHeight / maxHeightRes;
-        //uid.scaleRes[0] = (float)uid.vidWidth / maxWidthRes;
-        //uid.scaleRes[1] = (float)uid.vidHeight / maxHeightRes;
+        uid.scaleRes[0] = ((float)uid.vidWidth / (maxHeightRes * vidRatio)) * userScale;
+        uid.scaleRes[1] = ((float)uid.vidHeight / maxHeightRes) * userScale;
+        uid.bHighResScaling = qtrue;
+    } else if (userScale != 1.0f) {
+        uid.scaleRes[0] = userScale;
+        uid.scaleRes[1] = userScale;
         uid.bHighResScaling = qtrue;
     } else {
         uid.scaleRes[0]     = 1;
@@ -5297,6 +5331,7 @@ void CL_InitializeUI(void)
     cl_greenfps            = Cvar_Get("cl_greenfps", "0", 1);
     cl_playintro           = Cvar_Get("cl_playintro", "1", 0);
     cl_movieaudio          = Cvar_Get("cl_movieaudio", "1", 0);
+    ui_scale               = Cvar_Get("ui_scale", "1.0", CVAR_ARCHIVE);
     Cvar_Get("ui_startmap", "", 1);
     Cvar_Get("dlg_badsave", "This save game is invalid", 0);
 

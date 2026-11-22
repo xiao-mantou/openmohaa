@@ -246,3 +246,20 @@ $$\text{draw\_x} = \text{box\_x} + \frac{\text{box\_width} - \text{text\_width}}
   * `openmohaa.exe` 与 `renderer_opengl1.dll` 链接成功，编译过程 0 Error。
   * 最新二进制已同步部署至游戏目录 `e:\GOG Games\Medal of Honor - Allied Assault War Chest`。
   * 实机运行测试：“全开”、“复杂”、“最大”、“最高”、“高”等选项文字全部正常显示中文，文字精确居中，战役任务简报文字恢复正常，移植任务圆满达成！
+
+---
+
+## 7. 高分辨率与 UI / 字幕缩放 (`ui_scale`)
+
+### 7.1 问题背景
+在 2K (2560x1440) 或 4K 显示器上游玩时，引擎自带的高分辨率缩放因子仅为 `vidHeight / 1080`（2K 下为 1.33x），导致局内 HUD（生命、弹药、罗盘、准星）、字幕（Subtitle）、任务目标（Objectives）及聊天文字偏小，影响观感。
+
+### 7.2 解决方案
+新增 `ui_scale` 控制变量（`cvar`，带 `CVAR_ARCHIVE` 标志）：
+* **默认值**: `1.0`（完全保持与上游默认表现 100% 向后兼容）。
+* **自动持久化**: 会自动保存并读取自 `%APPDATA%\openmohaa\main\configs\omconfig.cfg`。
+* **实时生效**: 在控制台输入 `ui_scale 1.5` 或通过 `autoexec.cfg` 配置后，局内 HUD、任务目标和字幕即时平滑缩放，无需重启游戏。
+* **配置示例** (推荐 2K 分辨率设置 1.3 ~ 1.6)：
+  ```cfg
+  seta ui_scale "1.5"
+  ```
