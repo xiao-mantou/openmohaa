@@ -150,85 +150,87 @@ $$\text{draw\_x} = \text{box\_x} + \frac{\text{box\_width} - \text{text\_width}}
 
 ---
 
-## 4. 修复方案与代码变更审计（对比上游基准 a2f3401）
+## 4. 修复方案与分支架构（对比上游基准 a2f3401）
 
-经过全面排查与验证，我们在 15 个文件中实施了精简、必要且符合规范的修复。所有变更均与上游 `a2f3401` 进行了详细比对审查：
+为方便向官方 `openmoh/openmohaa` 提交 PR，并利用官方 GitHub Actions 实现纯净标准构建，本仓库采用双分支维护架构：
 
-### 4.1 编译与工具链适配 (Windows MinGW)
-1. **`cmake/compilers/gnu.cmake`**:
-   - `elseif (NOT APPLE AND NOT WIN32)`：避免在 Windows MinGW 环境下尝试链接不存在的 `librt.a`。
-2. **`cmake/launcher.cmake` & `cmake/platforms/windows.cmake`**:
-   - 对 `win_resource.rc` 增加 `if(NOT MINGW)` 保护，解决 GNU `windres` 无法处理包含空格目录（如 `Medal of Honor`）的已知上游 Bug。
-3. **`code/gamespy/common/gsMemory.c`**:
-   - 修复 `#if defined(_MSC_VER) && (_MSC_VER < 1300)` 宏定义检查，避免在 GCC 下产生未定义宏警告。
-4. **`code/qcommon/files.cpp` & `code/qcommon/q_platform.h`**:
-   - 补充 MinGW 编译所需的 `<sys/stat.h>` 和 `<malloc.h>`（提供 `alloca` 支持）。
-
-### 4.2 词法解析与 DBCS 支持
-1. **`code/qcommon/q_shared.c`**:
-   - 在 `SkipWhitespace`、`COM_ParseExt`、`COM_ParseExtIgnoreQuotes`、`COM_GetToken` 中将 `*data` 转换为 `(unsigned char)*data`，确保高位字节（`0x80..0xFF`）被正确判定为大于 32 的有效字符，彻底解决汉字被视为空白吃掉的问题。
-2. **`code/corepp/script.cpp` & `code/corepp/tiki_script.cpp`**:
-   - 统一使用 `(unsigned char)*script_p <= (unsigned char)TOKENSPACE && *script_p != '\0'`。
-   - 在 `GetString` 中增加 DBCS 双字节识别：
-     ```cpp
-     if ((unsigned char)*script_p >= 0x81 && (unsigned char)*script_p <= 0xFE && (script_p + 1 < end_p) && *(script_p + 1) != '"') {
-         *token_p++ = *script_p++;
-         *token_p++ = *script_p++;
-         continue;
-     }
-     ```
-     彻底防止汉字尾字节 `0x5C` (`\`) 被误当做转义字符。
-3. **`code/corepp/str.cpp`**:
-   - 传给 `isspace()` 前强制转换为 `(unsigned char)`，防止 Windows CRT 在遇到负字符时触发断言崩溃。
-
-### 4.3 本地化与服务端/单机消息路由
-1. **`code/sys/win_localization.cpp`**:
-   - `Sys_LV_ConvertString`: 恢复通过 `Sys_LV_CL_ConvertString` 进行字典查找。OpenMoHAA 上游原注释写着“2.0 不再本地化 fgame 消息”，但单人战役中大量 HUD 打印（例如“游戏已保存”、“获得 1 枚手榴弹”等）均通过 `gi.LV_ConvertString` 发出，若不转换会导致单人战役系统提示退化为英文。
-   - `ConvertString` 与 `bjb_strnscmp` 中修正所有字符比较为 `(unsigned char)`。
-
-### 4.4 字体度量与 UI 计算
-1. **`code/uilib/uifont.cpp`**:
-   - 修复 `DBCSIsMaekin` / `DBCSIsAtokin` 比较：`p[1] == (uch & 0xFF)`。
-   - 修复 `UI_FontCodeSearch` 二分查找越界错误（原版在未命中时 `l == charTableLength` 会导致内存越界访问）。
-   - 增加防御性校验：`if (!font || !font->charTable || font->charTableLength <= 0) return -1;`。
-   - 修复 `UI_FontStringWidth` 与 `UI_FontStringMaxWidth` 中的尾字节读取错误（原版错误地将前导字节与自身进行位或运算：`uch = (uch << 8) | pszString[i]`）。
-
-### 4.5 渲染器与字库加载核心修复 (GL1 & GL2)
-1. **`code/renderergl1/tr_font.cpp` & `code/renderergl2/tr_font.cpp`**:
-   - **EOF 截断防护**: 在 `R_LoadFont` 中增加：
-     ```cpp
-     token = COM_Parse(&ref);
-     if (!token || !token[0]) {
-         break;
-     }
-     ```
-     杜绝文件末尾进入 `Bad Token` 分支，彻底保护 `charTable` 与 `numPages`。
-   - **verdana-14 回退**: 官方中文补丁仅制作了 `verdana-12` 和 `facfont-20` 的中文字库。当 HUD 或控件请求 `verdana-14` 时，检测若 `verdana-12` 具备多页中文，则平滑回退至 `verdana-12`，保证中文能正常显示。
-   - **二分查找越界与防空校验**: 修正 `CodeSearch` 二分查找区间，加入针对空指针和 0 长度的防护。
-   - **字符串绘制与排版修复 (`R_DrawString`)**:
-     - 修正 `(unsigned char)text[i]` 读取与双字节组合；
-     - 修正缓冲区切片刷新逻辑，由使用全局 `maxlen` 改为当前切片长度 `buflen`；
-     - 修正换行时绘制坐标由静态 `y` 改为累加后的 `curY`；
-     - 宽度步进与缩放比率对齐：`curX += curWidth * s_fontGeneralScale`。
-   - **字符串精确宽度测算 (`R_GetFontStringWidth`)**:
-     - 修复 `s[0]` 死循环 bug，逐字符扫描 `s[i]`；
-     - 正确合成 16-bit `unsigned short uch`；
-     - 宽度返回时按 `width * s_fontGeneralScale * 256.0f` 进行缩放，与绘制完全 1:1 吻合，确保居中算法精确无误。
+* **`main` 分支（核心中文支持，推荐）**：
+  仅包含**纯粹的 8 个中文字库与本地化渲染核心文件**，完全对齐上游官方构建体系。无需任何本地编译妥协，由上游 GitHub Actions 原生云端 MSVC 自动化构建并打包 Release。
+* **`mingw-build` 分支（本地 MinGW 工具链适配备用）**：
+  包含了本地使用 MinGW GCC 编译所需的 6 个平台适配修改（屏蔽含空格路径下的 `windres`、处理 POSIX `stat.h` 与 `alloca` 等）。若未来需要在本地离线调试，可切至该分支。
 
 ---
 
-## 5. 冗余清理与审计清单
+### 4.1 核心汉化修复代码审计（`main` 分支 8 个文件）
 
-对工作区与 Git 提交树进行了严格的无用/冗余项审计与清理：
+#### 1. 词法解析与 DBCS 支持
+* **`code/qcommon/q_shared.c`**:
+  - 在 `SkipWhitespace`、`COM_ParseExt`、`COM_ParseExtIgnoreQuotes`、`COM_GetToken` 中将 `*data` 转换为 `(unsigned char)*data`，确保高位字节（`0x80..0xFF`）被正确判定为大于 32 的有效字符，彻底解决汉字被视为空白吃掉的问题。
+* **`code/corepp/str.cpp`**:
+  - 在 `str::strip` 和 `strstrip` 中将 `isspace((int)*s)` 转换为 `*s && isspace((unsigned char)*s)`。GBK 汉字高位字节在 signed char 下为负数，传给 `isspace` 属于未定义行为并在 MSVC Debug 下触发断言崩溃，转为 `(unsigned char)` 杜绝崩溃隐患。
+* **`code/corepp/script.cpp` & `code/corepp/tiki_script.cpp`**:
+  - 统一使用 `(unsigned char)*script_p <= (unsigned char)TOKENSPACE && *script_p != '\0'`。
+  - 在 `GetString` 中增加 DBCS 双字节识别：
+    ```cpp
+    if ((unsigned char)*script_p >= 0x81 && (unsigned char)*script_p <= 0xFE && (script_p + 1 < end_p) && *(script_p + 1) != '"') {
+        *token_p++ = *script_p++;
+        *token_p++ = *script_p++;
+        continue;
+    }
+    ```
+    彻底防止汉字尾字节 `0x5C` (`\`) 被误当做转义字符。
 
-1. **清理临时反编译与测试分析文件**:
-   - 删除根目录下用于反编译对比的原版可执行程序 `mohaa_orig.exe`。
-   - 删除临时记录文件 `libgcc_s_seh-1.dll libstdc++-6.dll.txt`。
-   - 清理所有非必要的 Python 探测脚本。
-2. **代码纯洁度审计**:
-   - 检查了全部 15 个被修改的源码文件，所有调试宏（`printf`、临时注释）均已完全移除。
-   - 变量命名和缩进格式严格对齐 OpenMoHAA 原生编码规范。
-   - 所有的内存分配均配合成对的空指针检查与释放逻辑。
+#### 2. 本地化与服务端/单机消息路由
+* **`code/sys/win_localization.cpp`**:
+  - `Sys_LV_ConvertString`: 恢复通过 `Sys_LV_CL_ConvertString` 进行字典查找。单人战役中大量 HUD 打印（例如“游戏已保存”、“获得 1 枚手榴弹”等）均通过 `gi.LV_ConvertString` 发出，转换以保证单人战役系统提示显示为中文。
+  - `ConvertString` 与 `bjb_strnscmp` 中修正所有字符比较为 `(unsigned char)`。
+
+#### 3. 字体度量与 UI 计算
+* **`code/uilib/uifont.cpp`**:
+  - 修复 `DBCSIsMaekin` / `DBCSIsAtokin` 比较：`p[1] == (uch & 0xFF)`。
+  - 修复 `UI_FontCodeSearch` 二分查找越界错误（原版在未命中时 `l == charTableLength` 会导致内存越界访问）。
+  - 增加防御性校验：`if (!font || !font->charTable || font->charTableLength <= 0) return -1;`。
+  - 修复 `UI_FontStringWidth` 与 `UI_FontStringMaxWidth` 中的尾字节读取错误（原版错误地将前导字节与自身进行位或运算：`uch = (uch << 8) | pszString[i]`）。
+
+#### 4. 渲染器与字库加载核心修复 (GL1 & GL2)
+* **`code/renderergl1/tr_font.cpp` & `code/renderergl2/tr_font.cpp`**:
+  - **EOF 截断防护**: 在 `R_LoadFont` 中增加：
+    ```cpp
+    token = COM_Parse(&ref);
+    if (!token || !token[0]) {
+        break;
+    }
+    ```
+    杜绝文件末尾进入 `Bad Token` 分支，彻底保护 `charTable` 与 `numPages`。
+  - **verdana-14 回退**: 官方中文补丁仅制作了 `verdana-12` 和 `facfont-20` 的中文字库。当 HUD 或控件请求 `verdana-14` 时，检测若 `verdana-12` 具备多页中文，则平滑回退至 `verdana-12`，保证中文能正常显示。
+  - **二分查找越界与防空校验**: 修正 `CodeSearch` 二分查找区间，加入针对空指针和 0 长度的防护。
+  - **字符串绘制与排版修复 (`R_DrawString`)**:
+    - 修正 `(unsigned char)text[i]` 读取与双字节组合；
+    - 修正缓冲区切片刷新逻辑，由使用全局 `maxlen` 改为当前切片长度 `buflen`；
+    - 修正换行时绘制坐标由静态 `y` 改为累加后的 `curY`；
+    - 宽度步进与缩放比率对齐：`curX += curWidth * s_fontGeneralScale`。
+  - **字符串精确宽度测算 (`R_GetFontStringWidth`)**:
+    - 修复 `s[0]` 死循环 bug，逐字符扫描 `s[i]`；
+    - 正确合成 16-bit `unsigned short uch`；
+    - 宽度返回时按 `width * s_fontGeneralScale * 256.0f` 进行缩放，与绘制完全 1:1 吻合，确保居中算法精确无误。
+
+---
+
+## 5. GitHub Actions 自动化编译使用指引
+
+上游 OpenMoHAA 仓库原生接入了 GitHub Actions 持续集成。在 fork 仓库启用后，由云端微软官方镜像进行全自动构建并生成发行包：
+
+1. **启用 Actions**：
+   * 访问你的仓库页面：`https://github.com/xiao-mantou/openmohaa/actions`。
+   * 点击绿色按钮 **"I understand my workflows, go ahead and enable them"**。
+   * 在 `Settings` -> `Actions` -> `General` -> `Workflow permissions` 下，确保勾选 **"Read and write permissions"**。
+2. **触发构建**：
+   * 每次对 `main` 分支执行 `git push`，或者在 Actions 页面点击 `Builds` 工作流旁边的 `Run workflow`，云端虚拟机将自动启动。
+3. **获取产物**：
+   * 构建完成后，在对应运行记录的 **Artifacts** 区域即可直接下载：
+     - `out-windows-x64`（64位便携绿色版，解压即用）
+     - `out-windows-x64-installer`（官方标准 MSI 安装包 `Setup.msi`）
+     - 另外同时生成了 x86、ARM64 以及 Linux、macOS 全套构建产物！
 
 ---
 
