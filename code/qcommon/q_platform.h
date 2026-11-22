@@ -95,7 +95,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #endif
 
 // alloca
-#if defined(_WIN32) || defined(_MSC_VER)
+#ifdef _MSC_VER
 #  include <malloc.h>
 #elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 #  include <stdlib.h>
