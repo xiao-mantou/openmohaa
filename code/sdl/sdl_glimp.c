@@ -397,7 +397,7 @@ static void GLimp_ClearProcAddresses( void ) {
 GLimp_SetMode
 ===============
 */
-static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qboolean fixedFunction)
+static int GLimp_SetMode(int mode, int fullscreen, qboolean noborder, qboolean fixedFunction)
 {
 	struct GLimp_ContextType {
 		int profileMask;
@@ -511,9 +511,14 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 		SDL_window = NULL;
 	}
 
-	if( fullscreen )
+	if( fullscreen == 1 )
 	{
 		flags |= SDL_WINDOW_FULLSCREEN;
+		glConfig.isFullscreen = qtrue;
+	}
+	else if( fullscreen == 2 )
+	{
+		flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 		glConfig.isFullscreen = qtrue;
 	}
 	else
@@ -774,7 +779,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 			continue;
 		}
 
-		if( fullscreen )
+		if( fullscreen == 1 )
 		{
 			SDL_DisplayMode desiredMode;
 
@@ -788,6 +793,10 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 			desiredMode.w = glConfig.vidWidth;
 			desiredMode.h = glConfig.vidHeight;
 			desiredMode.refresh_rate = glConfig.displayFrequency = ri.Cvar_VariableIntegerValue( "r_displayRefresh" );
+			if( desiredMode.refresh_rate <= 0 && desktopMode.refresh_rate > 0 )
+			{
+				desiredMode.refresh_rate = glConfig.displayFrequency = desktopMode.refresh_rate;
+			}
 			desiredMode.driverdata = NULL;
 
 			if( SDL_SetWindowDisplayMode( SDL_window, &desiredMode ) < 0 )
@@ -795,6 +804,13 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 				ri.Printf( PRINT_DEVELOPER, "SDL_SetWindowDisplayMode failed: %s\n", SDL_GetError( ) );
 				continue;
 			}
+		}
+		else
+		{
+			if( desktopMode.refresh_rate > 0 )
+				glConfig.displayFrequency = desktopMode.refresh_rate;
+			else
+				glConfig.displayFrequency = ri.Cvar_VariableIntegerValue( "r_displayRefresh" );
 		}
 
 		SDL_SetWindowIcon( SDL_window, icon );
@@ -844,7 +860,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 GLimp_StartDriverAndSetMode
 ===============
 */
-static qboolean GLimp_StartDriverAndSetMode(int mode, qboolean fullscreen, qboolean noborder, qboolean gl3Core)
+static qboolean GLimp_StartDriverAndSetMode(int mode, int fullscreen, qboolean noborder, qboolean gl3Core)
 {
 	rserr_t err;
 
@@ -868,7 +884,7 @@ static qboolean GLimp_StartDriverAndSetMode(int mode, qboolean fullscreen, qbool
 		ri.Printf( PRINT_ALL, "Fullscreen not allowed with in_nograb 1\n");
 		ri.Cvar_Set( "r_fullscreen", "0" );
 		r_fullscreen->modified = qfalse;
-		fullscreen = qfalse;
+		fullscreen = 0;
 	}
 	
 	err = GLimp_SetMode(mode, fullscreen, noborder, gl3Core);
@@ -1197,12 +1213,19 @@ void GLimp_EndFrame( void )
 
 	if( r_fullscreen->modified )
 	{
-		int         fullscreen;
+		Uint32      windowFlags;
+		int         currentMode = 0;
 		qboolean    needToToggle;
 		qboolean    sdlToggled = qfalse;
 
 		// Find out the current state
-		fullscreen = !!( SDL_GetWindowFlags( SDL_window ) & SDL_WINDOW_FULLSCREEN );
+		windowFlags = SDL_GetWindowFlags( SDL_window );
+		if( ( windowFlags & SDL_WINDOW_FULLSCREEN_DESKTOP ) == SDL_WINDOW_FULLSCREEN_DESKTOP )
+			currentMode = 2;
+		else if( windowFlags & SDL_WINDOW_FULLSCREEN )
+			currentMode = 1;
+		else
+			currentMode = 0;
 
 		if( r_fullscreen->integer && ri.Cvar_VariableIntegerValue( "in_nograb" ) )
 		{
@@ -1212,13 +1235,21 @@ void GLimp_EndFrame( void )
 		}
 
 		// Is the state we want different from the current state?
-		needToToggle = !!r_fullscreen->integer != fullscreen;
+		needToToggle = r_fullscreen->integer != currentMode;
 
 		if( needToToggle )
 		{
-			sdlToggled = SDL_SetWindowFullscreen( SDL_window, r_fullscreen->integer ) >= 0;
+			Uint32 flagsToSet = 0;
+			if( r_fullscreen->integer == 2 )
+				flagsToSet = SDL_WINDOW_FULLSCREEN_DESKTOP;
+			else if( r_fullscreen->integer == 1 )
+				flagsToSet = SDL_WINDOW_FULLSCREEN;
+			else
+				flagsToSet = 0;
 
-			// SDL_WM_ToggleFullScreen didn't work, so do it the slow way
+			sdlToggled = SDL_SetWindowFullscreen( SDL_window, flagsToSet ) >= 0;
+
+			// SDL_SetWindowFullscreen didn't work, so do it the slow way
 			if( !sdlToggled )
 				ri.Cmd_ExecuteText(EXEC_APPEND, "vid_restart\n");
 
