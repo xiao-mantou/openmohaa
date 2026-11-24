@@ -1636,6 +1636,7 @@ extern	cvar_t* r_farplane_nofog;
 extern	cvar_t* r_skybox_farplane;
 extern	cvar_t* r_farclip;
 extern	cvar_t* r_lightcoronasize;
+extern	cvar_t* r_sunblind;
 extern	cvar_t* r_useglfog;
 extern	cvar_t* r_debuglines_depthmask;
 extern	cvar_t* r_smoothsmokelight;

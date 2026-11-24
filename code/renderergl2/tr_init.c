@@ -278,6 +278,7 @@ cvar_t* r_farclip;
 // Lighting
 
 cvar_t* r_lightcoronasize;
+cvar_t* r_sunblind;
 cvar_t *r_entlight_scale;
 cvar_t *r_entlight_errbound;
 cvar_t *r_entlight_cubelevel;
@@ -1593,6 +1594,7 @@ void R_Register( void )
 	// Lighting
 
     r_lightcoronasize = ri.Cvar_Get("r_lightcoronasize", ".1", CVAR_ARCHIVE);
+    r_sunblind = ri.Cvar_Get("r_sunblind", "0.2", CVAR_ARCHIVE);
     r_light_lines = ri.Cvar_Get("r_light_lines", "0", CVAR_CHEAT);
     r_light_sun_line = ri.Cvar_Get("r_light_sun_line", "0", CVAR_CHEAT);
     r_light_int_scale = ri.Cvar_Get("r_light_int_scale", "0.05", CVAR_ARCHIVE);

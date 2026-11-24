@@ -352,6 +352,12 @@ overlap and double darken.
 =================
 */
 void RB_ShadowFinish( void ) {
+	// FIXME: Stencil shadow volumes are not used for MOHAA character foot shadows (cg_shadows 2),
+	// which instead use decal foot shadows (CG_CastFootShadow).
+	// Overwriting near-plane depth with GLS_DEPTHMASK_TRUE causes subsequent sprite/explosion
+	// passes (RC_SPRITE_SURFS) to fail depth testing and vanish completely (upstream issue #538).
+	// Align with renderergl2 where this is disabled.
+#if 0
 	if ( r_shadows->integer != 2 ) {
 		return;
 	}
@@ -383,4 +389,5 @@ void RB_ShadowFinish( void ) {
 
 	qglColor4f(1,1,1,1);
 	qglDisable( GL_STENCIL_TEST );
+#endif
 }

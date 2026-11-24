@@ -6,8 +6,16 @@ endif()
 
 list(APPEND SYSTEM_PLATFORM_SOURCES
     ${SOURCE_DIR}/sys/sys_win32.c
-    ${SOURCE_DIR}/sys/win_resource.rc
 )
+
+# GNU windres has a known bug with paths containing spaces in -I flags
+if(NOT MINGW)
+    list(APPEND SYSTEM_PLATFORM_SOURCES
+        ${SOURCE_DIR}/sys/win_resource.rc
+    )
+    set_source_files_properties(${SOURCE_DIR}/sys/win_resource.rc
+        PROPERTIES COMPILE_DEFINITIONS "WINDOWS_ICON_PATH=\"${WINDOWS_ICON_PATH}\"")
+endif()
 
 list(APPEND CLIENT_PLATFORM_SOURCES ${SOURCE_DIR}/sys/con_passive.c)
 list(APPEND SERVER_PLATFORM_SOURCES ${SOURCE_DIR}/sys/con_win32.c)
@@ -29,9 +37,6 @@ if(MINGW)
 endif()
 
 list(APPEND CLIENT_DEFINITIONS USE_ICON)
-
-set_source_files_properties(${SOURCE_DIR}/sys/win_resource.rc
-    PROPERTIES COMPILE_DEFINITIONS WINDOWS_ICON_PATH=${WINDOWS_ICON_PATH})
 
 if(MSVC)
     # We have our own manifest, disable auto creation

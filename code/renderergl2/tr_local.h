@@ -2424,6 +2424,7 @@ extern cvar_t* r_farclip;
 // Lighting
 
 extern cvar_t* r_lightcoronasize;
+extern cvar_t* r_sunblind;
 extern cvar_t *r_entlight_scale;
 extern cvar_t *r_entlight_errbound;
 extern cvar_t *r_entlight_cubelevel;

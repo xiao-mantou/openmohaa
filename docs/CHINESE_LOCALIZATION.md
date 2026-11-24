@@ -349,8 +349,10 @@ $$\text{draw\_x} = \text{box\_x} + \frac{\text{box\_width} - \text{text\_width}}
      ```
      `RB_ShadowFinish` 针对未清空的模板缓冲区，以写深度模式（`GLS_DEPTHMASK_TRUE`）在视锥体近平面（$z = -10$ 处）绘制了一个全屏四边形，**将脏区域的深度缓冲强行覆盖为最近距离**。
   3. 特效精灵在深度测试中全部被剔除：在主场景后，引擎通过 `RC_SPRITE_SURFS`（`RB_SpriteSurfs`）统一绘制爆炸粒子面片。由于爆炸面片在渲染时启用了常规深度测试，遇到刚才被 `RB_ShadowFinish` 错误覆盖的 $z = -10$ 深度值，全部未通过深度测试而被 OpenGL 硬件管线直接丢弃剔除，导致爆炸火光整体隐形。
+* **代码修复方案 (已合入)**:
+  在 `code/renderergl1/tr_shadows.c` 中，将无 stencil buffer 支持且强制写近平面深度的 `RB_ShadowFinish()` 通过 `#if 0` 禁用（与 `renderergl2` 完全保持一致）。禁用后，`cg_shadows 2` 下复杂的阴影渲染依然按引擎既定逻辑绘制，且爆炸粒子特效在 `RC_SPRITE_SURFS` 阶段深度测试不再被破坏，火光与烟雾完全正常显示，彻底解决了上游 Issue #538。
 * **应对建议**:
-  推荐在图形设置中将“阴影”设为 **`简单` (`cg_shadows 1`)**。该模式使用基于地面的足底圆形贴花投影（Blob/Decal Shadow），不仅计算开销极低、帧率稳定，而且完全避开了模板缓冲区冲突，手榴弹与火光特效完美呈现。
+  如果使用未修复的上游旧版本，推荐在图形设置中将“阴影”设为 **`简单` (`cg_shadows 1`)**。该模式使用基于地面的足底圆形贴花投影（Blob/Decal Shadow），不仅计算开销极低、帧率稳定，而且完全避开了模板缓冲区冲突。而在本项目最新编译版本中，`cg_shadows 2` 与 `cg_shadows 1` 均已完美支持爆炸特效。
 
 ### 10.2 现象二：打掉探照灯后地面仍然残留照射光斑
 * **故障现象**:
@@ -372,6 +374,12 @@ $$\text{draw\_x} = \text{box\_x} + \frac{\text{box\_width} - \text{text\_width}}
      ```
      当玩家先击毙了操作机枪的哨兵（`self.spotter`）时，主监视线程退出并进入了死等待；此时若玩家未再向灯体碰撞盒追加射击，`self.checkdeath` 保持为 0，程序永远无法执行到后方的 `self.org lightOff` 与 `local.light delete`，导致地面光源实体永久驻留。
   3. **路径飞行状态未完成**: 即使触发了灯体爆炸，由于 `flypath` 路径运动在独立线程中执行，动态光照实体的关闭如果未被及时同步到世界表面（`dlightMap` 缓存），也会造成短暂的光斑残留。此现象属于 2002 原版关卡脚本固有逻辑机制。
+* **脚本修复方案：逻辑 B（人死灯停，灯毁彻底灭）(已合入)**:
+  通过自定义优化脚本 `main/global/spotlight.scr`（并打包为 `main/pak8_searchlight_fix.pk3` 确保高优先级覆盖）：
+  1. **伤害判定全面绑定**: 为探照灯模型主体及其 `bulb`（灯泡部）赋予 `takedamage` 并挂载 `bulb_damage` 伤害响应线程，确保玩家射击灯头或灯座任何部分均能精准触发损毁。
+  2. **运动线程精准终止**: 在 `spotlight` 启动时显式记录点移动线程句柄 `self.thread_spotpath`，灯体被破坏时直接 `self.thread_spotpath delete` 掐断 `flypath` 路径运动。
+  3. **人死灯停**: 当操作机枪的哨兵死亡时，探照灯立即停止转动并保持在当前射向（不再进入原版脚本的死等待循环），死亡监听线程继续保持激活监听灯体状态。
+  4. **灯毁彻底清理**: 探照灯被摧毁时立即播放爆炸音效与火花，切换损坏模型 `miscobj/searchlightoff.tik`，并对投射动态光源、光束实体及电晕实体依次执行 `lightOff` 与 `delete`（包括 `self.org`、`local.light`、`self.spotlight`、`self.light`、`self.flare`、`self.search`），地面光斑与光束彻底熄灭，杜绝任何残留。
 
 ### 10.3 现象三：直视太阳时整个屏幕大白（强光耀斑机制与门窗穿透 Issue #398）
 * **故障现象**:
@@ -388,3 +396,12 @@ $$\text{draw\_x} = \text{box\_x} + \frac{\text{box\_width} - \text{text\_width}}
      ri.CM_BoxTrace(&trace, viewOrigin, sunTraceOrigin, vec3_origin, vec3_origin, 0, CONTENTS_SOLID, qfalse);
      ```
      该射线追踪**只检测 BSP 静态世界画刷（`CONTENTS_SOLID`）**，而不检测动态门（`func_door`）、可破坏物体、植被或实体模型。因此即便关着门或身处室内，只要世界画刷判定穿透到了天空面（`SURF_SKY`），引擎就会误以为玩家直面烈日，从而触发全屏眩光。该问题上游已确认与原版完全一致（标为 `in-original-game`）。
+* **代码修复方案：新增 `r_sunblind` 控制强光眩目 (已合入)**:
+  为了在保留太阳真实镜头光晕（Lens Flare、日环、日冕粒子）的同时彻底解决现代高对比显示器上的刺眼大白屏，在底层渲染器 `renderergl1` 与 `renderergl2` 中新增归档控制变量 `r_sunblind`（默认值为 `0.2`）：
+  - **声明与注册**: 在 `tr_local.h` 与 `tr_init.c` 中注册 `r_sunblind = ri.Cvar_Get("r_sunblind", "0.2", CVAR_ARCHIVE);`。
+  - **优雅平滑缩放**: 在 `tr_sun_flare.cpp:ScreenBlend()` 中，将覆盖全屏的纯白混合面片 (`whitefade`) 亮度乘以 `r_sunblind->value`，并在内部添加上限保护 `lastbright = (lastbright > 0.4f ? 0.4f : lastbright)`；若玩家设置 `r_sunblind 0`，则完全关闭全屏白屏遮罩，仅保留太阳本体日轮与镜头衍射环。
+  - **门窗遮挡保持原版**: 遵照原版设计，保留了光晕在门窗边缘的穿透感，不破坏原汁原味的二战阳光滤镜氛围。
+  - **参数调节指南**:
+    - `r_sunblind "0.2"`（默认推荐）：舒适微眩光，直视太阳时伴随柔和的白光弥散，不遮挡视线、不刺眼。
+    - `r_sunblind "0"`：完全关闭全屏泛白，太阳仅作为天空盒中的高光日轮与镜头光斑。
+    - `r_sunblind "1.0"`：恢复 2002 原版暴烈的大白屏眩光。

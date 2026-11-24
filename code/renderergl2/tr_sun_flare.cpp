@@ -306,6 +306,11 @@ void lens_flare::ScreenBlend()
         return;
     }
 
+    if (r_sunblind && r_sunblind->value <= 0.0f) {
+        blend_active = false;
+        return;
+    }
+
     timediff = backEnd.refdef.time - lasttime;
     if (timediff > fullfade) {
         blend_active = false;
@@ -313,18 +318,27 @@ void lens_flare::ScreenBlend()
     }
 
     alpha = (float)(fullfade - timediff) / fullfade * lastbright;
-    if (alpha <= 0.0001) {
+    if (r_sunblind) {
+        alpha *= r_sunblind->value;
+    }
+
+    // Safety clamp to prevent 100% white screen blowout on modern displays
+    if (r_sunblind && r_sunblind->value < 1.0f && alpha > 0.4f) {
+        alpha = 0.4f;
+    }
+
+    if (alpha <= 0.0001f) {
         blend_active = false;
         return;
     }
 
-    RB_Color4f(1.0, 1.0, 1.0, alpha);
+    RB_Color4f(1.0f, 1.0f, 1.0f, alpha);
 
     RB_StreamBegin(fullscreen);
-    RB_Vertex2f(-1.0, -1.0);
-    RB_Vertex2f(1.0, -1.0);
-    RB_Vertex2f(-1.0, 1.0);
-    RB_Vertex2f(1.0, 1.0);
+    RB_Vertex2f(-1.0f, -1.0f);
+    RB_Vertex2f(1.0f, -1.0f);
+    RB_Vertex2f(-1.0f, 1.0f);
+    RB_Vertex2f(1.0f, 1.0f);
 
     RB_StreamEnd();
 }

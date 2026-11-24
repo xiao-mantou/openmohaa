@@ -245,6 +245,7 @@ cvar_t* r_farplane_nofog;
 cvar_t* r_skybox_farplane;
 cvar_t* r_farclip;
 cvar_t* r_lightcoronasize;
+cvar_t* r_sunblind;
 cvar_t* r_useglfog;
 cvar_t* r_debuglines_depthmask;
 cvar_t* r_smoothsmokelight;
@@ -1533,6 +1534,7 @@ void R_Register( void )
 	r_skyportal = ri.Cvar_Get("r_skyportal", "0", 0);
 	r_skyportal_origin = ri.Cvar_Get("r_skyportal_origin", "0 0 0", 0);
 	r_lightcoronasize = ri.Cvar_Get("r_lightcoronasize", ".1", CVAR_ARCHIVE);
+	r_sunblind = ri.Cvar_Get("r_sunblind", "0.2", CVAR_ARCHIVE);
 	r_useglfog = ri.Cvar_Get("r_useglfog", "1", 64);
 	r_debuglines_depthmask = ri.Cvar_Get("r_debuglines_depthmask", "0", CVAR_ARCHIVE);
 	r_smoothsmokelight = ri.Cvar_Get("vss_smoothsmokelight", "1", CVAR_ARCHIVE);
