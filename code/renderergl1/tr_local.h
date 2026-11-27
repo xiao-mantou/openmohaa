@@ -1638,6 +1638,8 @@ extern	cvar_t* r_farclip;
 extern	cvar_t* r_lightcoronasize;
 extern	cvar_t* r_sunblind;
 extern	cvar_t* r_useglfog;
+extern	cvar_t* r_radialfog;
+extern	qboolean gl_nv_fog_distance_available;
 extern	cvar_t* r_debuglines_depthmask;
 extern	cvar_t* r_smoothsmokelight;
 extern	cvar_t* r_showportal;

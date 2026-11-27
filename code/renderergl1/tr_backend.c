@@ -632,7 +632,7 @@ void RB_BeginDrawingView (void) {
 
 	if (!( backEnd.refdef.rdflags & RDF_NOWORLDMODEL))
 	{
-		if ((backEnd.viewParms.farplane_distance && !tr.skyRendered && !tr.portalRendered) || tr.farclip)
+		if ((backEnd.viewParms.farplane_distance && (!tr.skyRendered || backEnd.viewParms.isPortalSky) && !tr.portalRendered) || tr.farclip)
 		{
 			clearBits |= GL_COLOR_BUFFER_BIT;
 			qglClearColor(glState.fFogColor[0], glState.fFogColor[1], glState.fFogColor[2], glState.fFogColor[3]);
@@ -1197,6 +1197,17 @@ void RB_SetupFog() {
 		glState.externalSetState &= ~GLS_FOG;
 	} else {
 		vec4_t vFogColor;
+
+#ifndef GL_FOG_DISTANCE_MODE_NV
+#define GL_FOG_DISTANCE_MODE_NV 0x855A
+#endif
+#ifndef GL_EYE_RADIAL_NV
+#define GL_EYE_RADIAL_NV 0x855B
+#endif
+
+		if (gl_nv_fog_distance_available && r_radialfog->integer) {
+			qglFogi(GL_FOG_DISTANCE_MODE_NV, GL_EYE_RADIAL_NV);
+		}
 
 		qglFogf(GL_FOG_START, backEnd.viewParms.farplane_bias);
 		qglFogf(GL_FOG_END, backEnd.viewParms.farplane_distance);

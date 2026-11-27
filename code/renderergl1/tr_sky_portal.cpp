@@ -164,7 +164,10 @@ void R_Sky_Render()
     newParms.farplane_distance = tr.refdef.skybox_farplane;
     newParms.renderTerrain     = tr.refdef.render_terrain;
 
-    if (oldParms.farplane_bias == 0.0 || oldParms.farplane_distance == 0.0) {
+    if (newParms.farplane_distance <= 0.0f) {
+        newParms.farplane_distance = oldParms.farplane_distance;
+        newParms.farplane_bias     = oldParms.farplane_bias;
+    } else if (oldParms.farplane_bias == 0.0 || oldParms.farplane_distance == 0.0) {
         newParms.farplane_bias = 0.0;
     } else {
         newParms.farplane_bias = newParms.farplane_distance / oldParms.farplane_distance * oldParms.farplane_bias;

@@ -621,7 +621,7 @@ void RE_RenderScene( const refdef_t *fd ) {
         if (fd->farplane_distance > 0 && fd->farplane_distance < parms.farplane_distance) {
             parms.farplane_distance = fd->farplane_distance;
 		} else {
-			if (fd->farplane_bias == 0) {
+			if (fd->farplane_bias <= 0.01f) {
 				parms.farplane_bias = parms.farplane_distance * 0.18f;
 			} else if (fd->farplane_distance <= 500.f) {
 				parms.farplane_bias = parms.farplane_distance * 0.18f;
@@ -629,7 +629,7 @@ void RE_RenderScene( const refdef_t *fd ) {
 				parms.farplane_bias = parms.farplane_distance / fd->farplane_distance;
 			}
 		}
-	} else if (parms.farplane_bias == 0) {
+	} else if (parms.farplane_bias <= 0.01f) {
 		parms.farplane_bias = parms.farplane_distance * 0.18f;
 	}
 

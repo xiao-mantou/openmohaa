@@ -682,6 +682,10 @@ void R_SetupFrustum (void) {
             }
 	}
 
+	if (r_farplane_bias->value > 0) {
+		tr.viewParms.farplane_bias = r_farplane_bias->value;
+	}
+
 	if (r_farplane_nocull->integer > 0) {
 		tr.viewParms.farplane_cull = FARPLANE_CULL_NONE;
 	}
