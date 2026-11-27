@@ -682,10 +682,6 @@ void R_SetupFrustum (void) {
             }
 	}
 
-	if (r_farplane_nocull->integer > 0) {
-		tr.viewParms.farplane_cull = FARPLANE_CULL_NONE;
-	}
-
 	if (tr.viewParms.farplane_distance)
 	{
 		vec3_t farPoint;
@@ -703,7 +699,7 @@ void R_SetupFrustum (void) {
 		SetPlaneSignbits(&tr.viewParms.frustum[4]);
 
 		tr.viewParms.fog.enabled = r_farplane_nofog->integer == 0;
-		if (tr.viewParms.farplane_cull != FARPLANE_CULL_NONE && (tr.viewParms.farplane_cull < FARPLANE_CULL_PORTALSKY || tr.viewParms.isPortalSky)) {
+		if (tr.viewParms.farplane_cull != FARPLANE_CULL_NONE) {
 			// extra fustum for culling
 			tr.viewParms.fog.extrafrustums = 1;
 		} else {

@@ -792,10 +792,6 @@ void R_SetupFrustum (viewParms_t *dest, float xmin, float xmax, float ymax, floa
             }
 	}
 
-	if (r_farplane_nocull->integer > 0) {
-		dest->farplane_cull = FARPLANE_CULL_NONE;
-	}
-
 	if (dest->farplane_distance)
 	{
 		vec3_t farPoint;
@@ -813,7 +809,7 @@ void R_SetupFrustum (viewParms_t *dest, float xmin, float xmax, float ymax, floa
 		SetPlaneSignbits(&dest->frustum[4]);
 
 		dest->fog.enabled = r_farplane_nofog->integer == 0;
-		if (dest->farplane_cull != FARPLANE_CULL_NONE && (dest->farplane_cull < FARPLANE_CULL_PORTALSKY || dest->isPortalSky)) {
+		if (dest->farplane_cull != FARPLANE_CULL_NONE) {
             // extra fustum for culling
             dest->flags |= VPF_FARPLANEFRUSTUM;
 			dest->fog.extrafrustums = 1;
