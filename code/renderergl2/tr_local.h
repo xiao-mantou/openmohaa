@@ -934,7 +934,7 @@ typedef struct {
     float sky_alpha;
     vec3_t sky_origin;
     vec3_t sky_axis[3];
-    qboolean skybox_farplane;
+    float skybox_farplane;
     qboolean render_terrain;
 } trRefdef_t;
 

@@ -682,7 +682,7 @@ typedef struct {
     vec3_t sky_axis[3];
 	// added in 2.0
 	//==
-    qboolean skybox_farplane;
+    float skybox_farplane;
     qboolean render_terrain;
 	//==
 

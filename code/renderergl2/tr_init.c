@@ -914,7 +914,10 @@ void R_ScreenShot_f (void) {
 	R_TakeScreenshot( 0, 0, glConfig.vidWidth, glConfig.vidHeight, checkname, qfalse );
 
 	if ( !silent ) {
-		ri.Printf (PRINT_ALL, "Wrote %s\n", checkname);
+		char message[64];
+
+		Com_sprintf(message, sizeof(message), "centerprint \"Wrote %s\"\n", checkname);
+		ri.Cmd_ExecuteText(EXEC_NOW, message);
 	}
 } 
 
@@ -967,7 +970,10 @@ void R_ScreenShotJPEG_f (void) {
 	R_TakeScreenshot( 0, 0, glConfig.vidWidth, glConfig.vidHeight, checkname, qtrue );
 
 	if ( !silent ) {
-		ri.Printf (PRINT_ALL, "Wrote %s\n", checkname);
+		char message[64];
+
+		Com_sprintf(message, sizeof(message), "centerprint \"Wrote %s\"\n", checkname);
+		ri.Cmd_ExecuteText(EXEC_NOW, message);
 	}
 } 
 

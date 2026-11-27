@@ -946,7 +946,10 @@ void R_ScreenShotJPEG_f (void) {
 	R_TakeScreenshot( 0, 0, glConfig.vidWidth, glConfig.vidHeight, checkname, qtrue );
 
 	if ( !silent ) {
-		ri.Printf (PRINT_ALL, "Wrote %s\n", checkname);
+		char message[64];
+
+		Com_sprintf(message, sizeof(message), "centerprint \"%s %s\"\n", ri.LV_ConvertString("Wrote"), checkname);
+		ri.Cmd_ExecuteText(EXEC_NOW, message);
 	}
 } 
 

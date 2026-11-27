@@ -187,7 +187,7 @@ typedef struct {
     qboolean    farplane_cull;
 	// added in 2.0
 	//==
-    qboolean	skybox_farplane;
+    float	skybox_farplane;
     qboolean	renderTerrain;
     float		farclipOverride;
     vec3_t		farplaneColorOverride;
