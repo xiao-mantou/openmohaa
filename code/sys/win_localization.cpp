@@ -259,44 +259,57 @@ static int bjb_strnscmp(const char *a, const char *b, size_t n)
 
 static void bjb_rebreak(const char *var, char *buf, size_t max)
 {
-#if 0
     const char *nl;
     char       *rb, *rb1, *rb2;
+    size_t      buflen;
 
-    nl = strchr(var, '\n');
-    if (!nl || nl >= &var[max]) {
+    if (!var || !buf) {
         return;
     }
 
-    while (1) {
-        rb  = &buf[nl - var];
-        rb1 = &buf[nl - var];
-        rb2 = &buf[nl - var];
+    nl = strchr(var, '\n');
+    if (!nl) {
+        return;
+    }
 
-        if (strlen(buf) < nl - var) {
-            return;
+    buflen = strlen(buf);
+    if (buflen == 0) {
+        return;
+    }
+    if (max > buflen) {
+        max = buflen;
+    }
+
+    while (nl) {
+        size_t offset = (size_t)(nl - var);
+        if (offset >= buflen || offset >= max) {
+            break;
         }
 
-        while (rb1 > var && !isspace(*rb1)) {
+        rb  = &buf[offset];
+        rb1 = rb;
+        rb2 = rb;
+
+        while (rb1 > buf && !isspace((unsigned char)*rb1)) {
             rb1--;
         }
-        while (*rb2 && rb2 < &var[max] && !isspace(*rb2)) {
+        while (*rb2 && rb2 < &buf[max] && !isspace((unsigned char)*rb2)) {
             rb2++;
         }
 
-        if (rb1 < var) {
-            if (!*rb2 || !isspace(*rb2)) {
+        if (rb1 <= buf && !isspace((unsigned char)*rb1)) {
+            if (!*rb2 || !isspace((unsigned char)*rb2)) {
                 return;
             }
 
             goto _set_new_line;
         }
 
-        if (!*rb2 || !isspace(*rb1) || !isspace(*rb2)) {
-            if (rb1 >= var && isspace(*rb1)) {
+        if (!*rb2 || !isspace((unsigned char)*rb1) || !isspace((unsigned char)*rb2)) {
+            if (rb1 >= buf && isspace((unsigned char)*rb1)) {
                 *rb1 = '\n';
                 goto _new_line_set;
-            } else if (!*rb2 || !isspace(*rb2)) {
+            } else if (!*rb2 || !isspace((unsigned char)*rb2)) {
                 return;
             }
 
@@ -312,11 +325,7 @@ static void bjb_rebreak(const char *var, char *buf, size_t max)
         *rb2 = '\n';
     _new_line_set:
         nl = strchr(nl + 1, '\n');
-        if (!nl || nl >= &var[max]) {
-            return;
-        }
     }
-#endif
 }
 
 const char *cLocalization::ConvertString(const char *var)

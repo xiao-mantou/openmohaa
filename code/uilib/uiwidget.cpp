@@ -2435,9 +2435,10 @@ void UIWidget::SetVirtualScale(vec2_t out)
         const float vidRatio  = (float)uid.vidWidth / (float)uid.vidHeight;
         const float minHeight = 480;
         const float minWidth  = minHeight * vidRatio;
+        const float userScale = uid.userScale > 0.0f ? uid.userScale : 1.0f;
 
-        out[0] = uid.vidWidth / minWidth * m_scaleCvar->value;
-        out[1] = uid.vidHeight / minHeight * m_scaleCvar->value;
+        out[0] = uid.vidWidth / minWidth * m_scaleCvar->value * userScale;
+        out[1] = uid.vidHeight / minHeight * m_scaleCvar->value * userScale;
     } else {
         out[0] = uid.vidWidth / 640.0;
         out[1] = uid.vidHeight / 480.0;

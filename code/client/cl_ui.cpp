@@ -1203,7 +1203,13 @@ getDefaultGMBoxRectangle
 static UIRect2D getDefaultGMBoxRectangle(void)
 {
     UIRect2D dmRect = getDefaultDMBoxRectangle();
-    float    height = uid.vidHeight * ui_compass_scale->value * 0.25f;
+    float    height;
+    if (com_target_game->integer >= TG_MOHTA) {
+        float userScale = uid.userScale > 0.0f ? uid.userScale : 1.0f;
+        height = uid.vidHeight * ui_compass_scale->value * (128.0f / 480.0f) * userScale + 10.0f * uid.scaleRes[1];
+    } else {
+        height = 128.0f * uid.scaleRes[1] + 10.0f * uid.scaleRes[1];
+    }
     float    y      = dmRect.size.height + dmRect.pos.y;
 
     if (height < y) {
@@ -1255,8 +1261,13 @@ UI_GetHighResolutionScale
 */
 void UI_GetHighResolutionScale(vec2_t scale)
 {
-    if (ui_scale && ui_scale->modified) {
-        ui_scale->modified = qfalse;
+    if ((ui_scale && ui_scale->modified) || (ui_compass_scale && ui_compass_scale->modified)) {
+        if (ui_scale) {
+            ui_scale->modified = qfalse;
+        }
+        if (ui_compass_scale) {
+            ui_compass_scale->modified = qfalse;
+        }
         UI_ResolutionChange();
     }
 
@@ -1839,8 +1850,13 @@ void UI_Update(void)
     Menu    *currentMenu;
     UIRect2D frame;
 
-    if (ui_scale && ui_scale->modified) {
-        ui_scale->modified = qfalse;
+    if ((ui_scale && ui_scale->modified) || (ui_compass_scale && ui_compass_scale->modified)) {
+        if (ui_scale) {
+            ui_scale->modified = qfalse;
+        }
+        if (ui_compass_scale) {
+            ui_compass_scale->modified = qfalse;
+        }
         UI_ResolutionChange();
     }
 
@@ -3902,10 +3918,10 @@ void UI_ResolutionChange(void)
     UIRect2D frame;
 
     if (com_target_game->integer >= TG_MOHTA) {
-        ui_compass_scale = Cvar_Get("ui_compass_scale", "0.75", CVAR_ARCHIVE | CVAR_LATCH);
+        ui_compass_scale = Cvar_Get("ui_compass_scale", "0.75", CVAR_ARCHIVE);
     } else {
         // Older version doesn't have an adjustable compass, so assume 0.5 by default
-        ui_compass_scale = Cvar_Get("ui_compass_scale", "0.55", CVAR_ARCHIVE | CVAR_LATCH);
+        ui_compass_scale = Cvar_Get("ui_compass_scale", "0.55", CVAR_ARCHIVE);
     }
 
     if (!ui_scale) {
@@ -3921,6 +3937,7 @@ void UI_ResolutionChange(void)
     } else if (userScale > 5.0f) {
         userScale = 5.0f;
     }
+    uid.userScale = userScale;
 
     // Added in OPM
     //  Scaling for high resolutions

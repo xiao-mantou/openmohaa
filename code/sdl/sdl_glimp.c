@@ -494,6 +494,14 @@ static int GLimp_SetMode(int mode, int fullscreen, qboolean noborder, qboolean f
 		x = ( desktopMode.w / 2 ) - ( glConfig.vidWidth / 2 );
 		y = ( desktopMode.h / 2 ) - ( glConfig.vidHeight / 2 );
 	}
+	else if( ( noborder || fullscreen == 2 ) && desktopMode.w > 0 && desktopMode.h > 0 )
+	{
+		if( glConfig.vidWidth >= desktopMode.w && glConfig.vidHeight >= desktopMode.h )
+		{
+			x = 0;
+			y = 0;
+		}
+	}
 
 	// Destroy existing state if it exists
 	if( SDL_glContext != NULL )
@@ -509,6 +517,15 @@ static int GLimp_SetMode(int mode, int fullscreen, qboolean noborder, qboolean f
 		ri.Printf( PRINT_DEVELOPER, "Existing window at %dx%d before being destroyed\n", x, y );
 		SDL_DestroyWindow( SDL_window );
 		SDL_window = NULL;
+	}
+
+	if( ( noborder || fullscreen == 2 ) && desktopMode.w > 0 && desktopMode.h > 0 )
+	{
+		if( glConfig.vidWidth >= desktopMode.w && glConfig.vidHeight >= desktopMode.h )
+		{
+			x = 0;
+			y = 0;
+		}
 	}
 
 	if( fullscreen == 1 )
@@ -813,6 +830,8 @@ static int GLimp_SetMode(int mode, int fullscreen, qboolean noborder, qboolean f
 				glConfig.displayFrequency = ri.Cvar_VariableIntegerValue( "r_displayRefresh" );
 		}
 
+		ri.Printf( PRINT_ALL, "Display mode: %dx%d @ %dHz\n", glConfig.vidWidth, glConfig.vidHeight, glConfig.displayFrequency );
+
 		SDL_SetWindowIcon( SDL_window, icon );
 
 		qglClearColor( 0, 0, 0, 1 );
@@ -877,6 +896,7 @@ static qboolean GLimp_StartDriverAndSetMode(int mode, int fullscreen, qboolean n
 		driverName = SDL_GetCurrentVideoDriver( );
 		ri.Printf( PRINT_ALL, "SDL using driver \"%s\"\n", driverName );
 		ri.Cvar_Set( "r_sdlDriver", driverName );
+		SDL_SetHint( SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0" );
 	}
 
 	if (fullscreen && ri.Cvar_VariableIntegerValue( "in_nograb" ) )
@@ -1115,6 +1135,7 @@ void GLimp_Init( qboolean fixedFunction )
 	}
 
 	ri.Sys_GLimpInit( );
+	SDL_SetHint( SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0" );
 
 	// Create the window and set up the context
 	if(GLimp_StartDriverAndSetMode(r_mode->integer, r_fullscreen->integer, r_noborder->integer, fixedFunction))
@@ -1257,5 +1278,18 @@ void GLimp_EndFrame( void )
 		}
 
 		r_fullscreen->modified = qfalse;
+	}
+
+	if( r_noborder->modified )
+	{
+		if( SDL_window )
+		{
+			SDL_SetWindowBordered( SDL_window, !r_noborder->integer ? SDL_TRUE : SDL_FALSE );
+			if( r_noborder->integer && !r_fullscreen->integer )
+			{
+				SDL_SetWindowPosition( SDL_window, 0, 0 );
+			}
+		}
+		r_noborder->modified = qfalse;
 	}
 }

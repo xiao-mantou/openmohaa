@@ -125,6 +125,8 @@ void UI_Init(void)
 {
     UIRect2D frame(0, 0, uid.vidWidth, uid.vidHeight);
 
+    uid.userScale = 1.0f;
+
     ui.globalFont = new UIFont;
     uWinMan.Init(frame, "verdana-12");
 
