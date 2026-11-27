@@ -247,8 +247,6 @@ cvar_t* r_farclip;
 cvar_t* r_lightcoronasize;
 cvar_t* r_sunblind;
 cvar_t* r_useglfog;
-cvar_t* r_radialfog;
-qboolean gl_nv_fog_distance_available = qfalse;
 cvar_t* r_debuglines_depthmask;
 cvar_t* r_smoothsmokelight;
 cvar_t* r_showportal;
@@ -1082,37 +1080,6 @@ void GL_SetDefaultState( void )
 
 	qglFogi(GL_FOG_MODE, GL_LINEAR);
 
-#ifndef GL_FOG_DISTANCE_MODE_NV
-#define GL_FOG_DISTANCE_MODE_NV 0x855A
-#endif
-#ifndef GL_EYE_RADIAL_NV
-#define GL_EYE_RADIAL_NV 0x855B
-#endif
-
-	// Check if GL_NV_fog_distance is supported
-	gl_nv_fog_distance_available = qfalse;
-	if ( qglGetStringi ) {
-		GLint numExtensions = 0;
-		int i;
-		qglGetIntegerv( GL_NUM_EXTENSIONS, &numExtensions );
-		for ( i = 0; i < numExtensions; i++ ) {
-			const char *ext = (const char *)qglGetStringi( GL_EXTENSIONS, i );
-			if ( ext && !Q_stricmp( ext, "GL_NV_fog_distance" ) ) {
-				gl_nv_fog_distance_available = qtrue;
-				break;
-			}
-		}
-	} else {
-		const char *extensions = (const char *)qglGetString( GL_EXTENSIONS );
-		if ( extensions && Q_stristr( extensions, "GL_NV_fog_distance" ) ) {
-			gl_nv_fog_distance_available = qtrue;
-		}
-	}
-
-	if ( gl_nv_fog_distance_available ) {
-		qglFogi( GL_FOG_DISTANCE_MODE_NV, GL_EYE_RADIAL_NV );
-	}
-
 	glState.fFogColor[0] = 0.0;
 	glState.fFogColor[1] = 0.0;
 	glState.fFogColor[2] = 0.0;
@@ -1387,7 +1354,7 @@ void R_Register( void )
 	r_stencilbits = ri.Cvar_Get( "r_stencilbits", "8", CVAR_ARCHIVE | CVAR_LATCH );
 #endif
 	r_depthbits = ri.Cvar_Get("r_depthbits", "0", CVAR_ARCHIVE | CVAR_LATCH);
-	r_overBrightBits = ri.Cvar_Get ("r_overBrightBits", "1", CVAR_ARCHIVE | CVAR_LATCH );
+	r_overBrightBits = ri.Cvar_Get ("r_overBrightBits", "0", CVAR_ARCHIVE | CVAR_LATCH );
 	r_ignorehwgamma = ri.Cvar_Get( "r_ignorehwgamma", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_maxmode = ri.Cvar_Get("r_maxmode", "6", CVAR_ARCHIVE | CVAR_LATCH);
 	r_vidmode1024 = ri.Cvar_Get("r_vidmode1024", "1", CVAR_ARCHIVE | CVAR_LATCH);
@@ -1572,7 +1539,6 @@ void R_Register( void )
 	r_lightcoronasize = ri.Cvar_Get("r_lightcoronasize", ".1", CVAR_ARCHIVE);
 	r_sunblind = ri.Cvar_Get("r_sunblind", "0.2", CVAR_ARCHIVE);
 	r_useglfog = ri.Cvar_Get("r_useglfog", "1", 64);
-	r_radialfog = ri.Cvar_Get("r_radialfog", "1", CVAR_ARCHIVE);
 	r_debuglines_depthmask = ri.Cvar_Get("r_debuglines_depthmask", "0", CVAR_ARCHIVE);
 	r_smoothsmokelight = ri.Cvar_Get("vss_smoothsmokelight", "1", CVAR_ARCHIVE);
 	r_showportal = ri.Cvar_Get("r_showportal", "0", 0);
