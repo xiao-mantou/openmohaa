@@ -1279,6 +1279,7 @@ typedef struct {
 	qboolean	isHyperspace;
 	trRefEntity_t	*currentEntity;
     qboolean skyRenderedThisView;	// flag for drawing sun
+    qboolean skyRenderedThisFrame;	// whether portal sky view cleared and rendered this frame
     sphereor_t spheres[MAX_SPHERE_LIGHTS];
     unsigned short numSpheresUsed;
     sphereor_t* currentSphere;

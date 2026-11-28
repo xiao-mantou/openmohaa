@@ -632,18 +632,33 @@ void RB_BeginDrawingView (void) {
 
 	if (!( backEnd.refdef.rdflags & RDF_NOWORLDMODEL))
 	{
-		if ((backEnd.viewParms.farplane_distance && !tr.skyRendered && !tr.portalRendered) || tr.farclip)
+		qboolean shouldClearFog = qfalse;
+
+		if (backEnd.viewParms.isPortalSky)
+		{
+			if (backEnd.viewParms.farplane_distance || tr.farclip)
+			{
+				shouldClearFog = qtrue;
+			}
+			backEnd.skyRenderedThisFrame = qtrue;
+		}
+		else
+		{
+			if ((backEnd.viewParms.farplane_distance && !backEnd.skyRenderedThisFrame && !tr.portalRendered) || tr.farclip)
+			{
+				shouldClearFog = qtrue;
+			}
+		}
+
+		if (shouldClearFog)
 		{
 			clearBits |= GL_COLOR_BUFFER_BIT;
 			qglClearColor(glState.fFogColor[0], glState.fFogColor[1], glState.fFogColor[2], glState.fFogColor[3]);
 		}
-		else
+		else if (r_fastsky->integer)
 		{
-			if (r_fastsky->integer)
-			{
-				clearBits |= GL_COLOR_BUFFER_BIT;
-				qglClearColor(0.5, 0.5, 1.0, 1.0);
-			}
+			clearBits |= GL_COLOR_BUFFER_BIT;
+			qglClearColor(0.5, 0.5, 1.0, 1.0);
 		}
 	}
 	qglClear( clearBits );
@@ -1449,6 +1464,7 @@ smp extensions, or asynchronously by another thread.
 void RB_ExecuteRenderCommands( const void *data ) {
 	int		t1, t2;
 
+	backEnd.skyRenderedThisFrame = qfalse;
 	t1 = ri.Milliseconds ();
 
 	while ( 1 ) {

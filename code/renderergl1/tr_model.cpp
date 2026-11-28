@@ -919,6 +919,40 @@ void R_AddSkelSurfaces(trRefEntity_t *ent)
                 shader = R_GetShaderByHandle(ent->e.customShader);
             }
 
+            if (shader->numUnfoggedPasses == 1 && !r_nocull->integer) {
+                vec3_t vDelta;
+                float fDist;
+                switch (shader->unfoggedStages[0]->alphaGen) {
+                case AGEN_DIST_FADE:
+                    if (R_DistanceCullPointAndRadius(
+                            shader->fDistNear + shader->fDistRange, ent->e.origin, ent->e.radius
+                        )
+                        == CULL_OUT) {
+                        continue;
+                    }
+                    break;
+                case AGEN_ONE_MINUS_DIST_FADE:
+                    if (R_DistanceCullPointAndRadius(shader->fDistNear, ent->e.origin, ent->e.radius)
+                        == CULL_IN) {
+                        continue;
+                    }
+                    break;
+                case AGEN_TIKI_DIST_FADE:
+                    fDist = (shader->fDistNear + shader->fDistRange);
+                    VectorSubtract(ent->e.origin, tr.viewParms.ori.origin, vDelta);
+                    if (VectorLengthSquared(vDelta) >= Square(fDist)) {
+                        continue;
+                    }
+                    break;
+                case AGEN_ONE_MINUS_TIKI_DIST_FADE:
+                    VectorSubtract(ent->e.origin, tr.viewParms.ori.origin, vDelta);
+                    if (VectorLengthSquared(vDelta) <= Square(shader->fDistNear)) {
+                        continue;
+                    }
+                    break;
+                }
+            }
+
             if (!personalModel) {
                 if ((*bsurf & 0x40) && (dsurf->numskins > 1)) {
                     int iShaderNum = ent->e.skinNum + (*bsurf & 2);
